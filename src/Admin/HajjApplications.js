@@ -13,6 +13,9 @@ const HajjApplications = () => {
   const [reason, setReason] = useState("");
   const [documents, setDocuments] = useState([]);
   const [showDocumentsModal, setShowDocumentsModal] = useState(false);
+  const [selectedRegistrations, setSelectedRegistrations] = useState([]);
+  const [earliestYearData, setEarliestYearData] = useState(null);
+  const [bulkMode, setBulkMode] = useState(false);
   
   // Filter and pagination states
   const [statusFilter, setStatusFilter] = useState("Registered");

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// CreateHajjOffer.js
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AdminTopbar from './AdminTopbar';
@@ -23,47 +24,202 @@ const CreateHajjOffer = () => {
         limit: 10,
         total: 0
     });
+    const [selectedRegistrations, setSelectedRegistrations] = useState([]);
+    const [earliestYearData, setEarliestYearData] = useState(null);
+    const [bulkMode, setBulkMode] = useState(false);
+    const [bulkResults, setBulkResults] = useState(null);
+
+  const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            // Fetch available years with slot info
+            const yearsResponse = await fetch('http://localhost:5000/api/admin/available-hajj-years');
+            const yearsData = await yearsResponse.json();
+
+            if (yearsData.success) {
+                setAvailableYears(yearsData.years);
+                setEarliestYearData(yearsData.earliestYear);
+                if (yearsData.earliestYear) {
+                    setSelectedYear(yearsData.earliestYear.year);
+                }
+            } else {
+                setError(yearsData.message || 'Failed to fetch available years');
+            }
+
+            // Fetch approved registrations with pagination
+            const regResponse = await fetch(
+                `http://localhost:5000/api/admin/approved-hajj-applications?page=${pagination.currentPage}&limit=${pagination.limit}`
+            );
+            const regData = await regResponse.json();
+
+            if (regData.success) {
+                setRegistrations(regData.applications);
+                setPagination(prev => ({
+                    ...prev,
+                    totalPages: regData.pagination.totalPages,
+                    total: regData.pagination.total
+                }));
+            } else {
+                setError(regData.message || 'Failed to fetch registrations');
+            }
+        } catch (err) {
+            setError('Failed to connect to server. Please try again later.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [pagination.currentPage, pagination.limit]);
 
     useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            try {
-                // Fetch available years
-                const yearsResponse = await fetch('http://localhost:5000/api/admin/available-hajj-years');
-                const yearsData = await yearsResponse.json();
-
-                if (yearsData.success) {
-                    setAvailableYears(yearsData.years);
-                    if (yearsData.years.length > 0) {
-                        setSelectedYear(yearsData.years[0]);
-                    }
-                } else {
-                    setError(yearsData.message || 'Failed to fetch available years');
-                }
-
-                // Fetch approved registrations with pagination
-                const regResponse = await fetch(`http://localhost:5000/api/admin/approved-hajj-applications?page=${pagination.currentPage}&limit=${pagination.limit}`);
-                const regData = await regResponse.json();
-
-                if (regData.success) {
-                    setRegistrations(regData.applications);
-                    setPagination(prev => ({
-                        ...prev,
-                        totalPages: regData.pagination.totalPages,
-                        total: regData.pagination.total
-                    }));
-                } else {
-                    setError(regData.message || 'Failed to fetch registrations');
-                }
-            } catch (err) {
-                setError('Failed to connect to server. Please try again later.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
         fetchData();
-    }, [pagination.currentPage]);
+    }, [fetchData]);
+
+    const handleBulkSelect = (reg, isSelected) => {
+        if (!earliestYearData) {
+            Swal.fire('Error', 'No available Hajj year data', 'error');
+            return;
+        }
+
+        let newSelectedRegistrations = [...selectedRegistrations];
+
+        if (isSelected) {
+            if (selectedRegistrations.length >= earliestYearData.availableSlots) {
+                Swal.fire(
+                    'Limit Reached',
+                    `Only ${earliestYearData.availableSlots} slots available`,
+                    'warning'
+                );
+                return;
+            }
+            newSelectedRegistrations.push(reg.registration_id);
+
+            // Auto-select Mahram pair if available
+            if (reg.mahram_user_id) {
+                const mahramReg = registrations.find(r => r.user_id === reg.mahram_user_id);
+                if (mahramReg && !newSelectedRegistrations.includes(mahramReg.registration_id)) {
+                    newSelectedRegistrations.push(mahramReg.registration_id);
+                }
+            }
+            //Auto select if this is a mahram pair
+            const mahramForReg = registrations.find(r => r.mahram_user_id === reg.user_id);
+            if(mahramForReg && !newSelectedRegistrations.includes(mahramForReg.registration_id)){
+                newSelectedRegistrations.push(mahramForReg.registration_id)
+            }
+
+        } else {
+            newSelectedRegistrations = newSelectedRegistrations.filter(id => id !== reg.registration_id);
+
+            //Unselect mahram pair,if available
+             if (reg.mahram_user_id) {
+                const mahramReg = registrations.find(r => r.user_id === reg.mahram_user_id);
+                if (mahramReg) {
+                   newSelectedRegistrations = newSelectedRegistrations.filter(id => id !== mahramReg.registration_id);
+                }
+            }
+
+            const mahramForReg = registrations.find(r => r.mahram_user_id === reg.user_id);
+            if(mahramForReg){
+                 newSelectedRegistrations = newSelectedRegistrations.filter(id => id !== mahramForReg.registration_id);
+            }
+        }
+
+        if (newSelectedRegistrations.length > earliestYearData.availableSlots) {
+            Swal.fire(
+                'Limit Reached',
+                `Only ${earliestYearData.availableSlots} slots available`,
+                'warning'
+            );
+            return;
+        }
+        setSelectedRegistrations(newSelectedRegistrations);
+    };
+
+    const handleBulkSubmit = async () => {
+        if (selectedRegistrations.length === 0) {
+            setError('Please select at least one applicant');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Confirm Bulk Offer Creation?',
+            html: `Create offers for <b>${selectedRegistrations.length} applicants</b> for Hajj <b>${selectedYear}</b>?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Create Offers',
+            cancelButtonText: 'Cancel'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                setIsSubmitting(true);
+                try {
+                    const response = await fetch('http://localhost:5000/api/admin/hajj-offers/bulk', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ registration_ids: selectedRegistrations })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const successCount = data.results.filter(r => r.success).length;
+                        setBulkResults(data.results.filter(r => r.success));
+                        
+                        Swal.fire(
+                            'Success!',
+                            `Created ${successCount} offers for Hajj ${data.target_year}`,
+                            'success'
+                        );
+                        
+                        // Refresh data
+                        fetchData();
+                        setSelectedRegistrations([]);
+                    } else {
+                        setError(data.message);
+                        Swal.fire('Error!', data.message, 'error');
+                    }
+                } catch (err) {
+                    setError('Failed to connect to server');
+                    Swal.fire('Error!', 'Failed to connect to server', 'error');
+                } finally {
+                    setIsSubmitting(false);
+                }
+            }
+        });
+    };
+
+const handleBulkGenerateLetters = async () => {
+    if (!bulkResults || bulkResults.length === 0) {
+        Swal.fire('Error', 'No successful offers to generate letters for', 'error');
+        return;
+    }
+
+    const offerIds = bulkResults.map(r => r.offer_id);
+
+    Swal.fire({
+        title: 'Generating Offer Letters...',
+        text: 'Please wait while we prepare all the letters.',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const response = await fetch('http://localhost:5000/api/admin/generate-offer-letters-bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ offer_ids: offerIds })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            Swal.fire('Success', `${result.generated_ids.length} offer letters generated`, 'success');
+        } else {
+            Swal.fire('Error', result.message || 'Failed to generate offer letters', 'error');
+        }
+    } catch (err) {
+        Swal.fire('Error', 'Server error while generating offer letters', 'error');
+    }
+};
+
 
     const filteredRegistrations = registrations.filter(reg =>
         reg.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,7 +227,33 @@ const CreateHajjOffer = () => {
         reg.th_acc_no.includes(searchTerm)
     );
 
-    const handleRegistrationSelect = (reg) => {
+    const handleRegistrationSelect = async (reg) => {
+        if (bulkMode) return;
+
+        // Check for Mahram Pair
+        if (reg.mahram_user_id) {
+            Swal.fire({
+                title: 'Mahram Pair Detected',
+                text: 'This applicant is part of a Mahram pair. Do you want to switch to Bulk Mode to create offers for both members?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Switch to Bulk Mode',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    setBulkMode(true);
+                    setSelectedRegistrations([reg.registration_id]);
+                    //Find mahram applicant in registrations and selected that too
+                    const mahramReg = registrations.find(r => r.user_id === reg.mahram_user_id);
+                    if (mahramReg) {
+                        setSelectedRegistrations(prev => [...prev, mahramReg.registration_id]);
+                    }
+                }
+            });
+            return; // Exit if switching to bulk mode is offered
+        }
+
+        // If no Mahram or bulk mode not switched, proceed as before
         setRegistrationId(reg.registration_id.toString());
         setPreviewData({
             name: reg.full_name,
@@ -86,6 +268,8 @@ const CreateHajjOffer = () => {
             setPagination(prev => ({ ...prev, currentPage: newPage }));
             setRegistrationId('');
             setPreviewData(null);
+            setSelectedRegistrations([]);
+            setBulkResults(null);
         }
     };
 
@@ -139,11 +323,14 @@ const CreateHajjOffer = () => {
                         const yearsData = await yearsResponse.json();
                         if (yearsData.success) {
                             setAvailableYears(yearsData.years);
-                            setSelectedYear(yearsData.years[0] || '');
+                            setEarliestYearData(yearsData.earliestYear);
+                            setSelectedYear(yearsData.earliestYear?.year || '');
                         }
                         
                         // Refresh applicants list
-                        const regResponse = await fetch(`http://localhost:5000/api/admin/approved-hajj-applications?page=${pagination.currentPage}&limit=${pagination.limit}`);
+                        const regResponse = await fetch(
+                            `http://localhost:5000/api/admin/approved-hajj-applications?page=${pagination.currentPage}&limit=${pagination.limit}`
+                        );
                         const regData = await regResponse.json();
 
                         if (regData.success) {
@@ -181,9 +368,9 @@ const CreateHajjOffer = () => {
         });
     };
 
-    const handleGenerateOfferLetter = () => {
-        const offerIdMatch = message.match(/Offer ID: (\d+)/);
-        const offerId = offerIdMatch ? offerIdMatch[1] : null;
+    const handleGenerateOfferLetter = (offerId) => {
+        // const offerIdMatch = message.match(/Offer ID: (\d+)/);
+        // const offerId = offerIdMatch ? offerIdMatch[1] : null;
 
         if (offerId) {
             window.open(`http://localhost:5000/api/admin/generate-offer-letter/${offerId}`, '_blank');
@@ -207,14 +394,35 @@ const CreateHajjOffer = () => {
                             </div>
                         )}
 
-                        {message && (
-                            <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" role="alert">
-                                <p className="whitespace-pre-line">{message}</p>
+ {message && (
+    <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" role="alert">
+       <p className="whitespace-pre-line">{message}</p>
+       <button
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2"
+          onClick={() => {
+            const offerIdMatch = message.match(/Offer ID: (\d+)/);
+            const offerId = offerIdMatch ? offerIdMatch[1] : null;
+
+            if (offerId) {
+              handleGenerateOfferLetter(offerId);
+            } else {
+              setError("Could not extract Offer ID from the success message.");
+            }
+          }}
+        >
+            Generate Offer Letter
+        </button>
+    </div>
+)}
+
+                        {bulkResults && bulkResults.length > 0 && (
+                            <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert">
+                                <p>Successfully created {bulkResults.length} offers in bulk.</p>
                                 <button
                                     className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2"
-                                    onClick={handleGenerateOfferLetter}
+                                    onClick={handleBulkGenerateLetters}
                                 >
-                                    Generate Offer Letter
+                                    Generate All Offer Letters
                                 </button>
                             </div>
                         )}
@@ -227,6 +435,36 @@ const CreateHajjOffer = () => {
 
                         {!isLoading && (
                             <div className="space-y-6">
+                                {/* Hajj Availability Section */}
+       <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+        {earliestYearData ? (
+            <>
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-blue-800">
+                        Hajj {earliestYearData.year} Availability
+                    </h3>
+                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                        {earliestYearData.availableSlots} / {earliestYearData.totalSlots} slots available
+                        (Reserved: {earliestYearData.reservedSlots})
+                    </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                    Departure: {new Date(earliestYearData.departurePeriod.start).toLocaleDateString()} - {' '}
+                    {new Date(earliestYearData.departurePeriod.end).toLocaleDateString()}
+                </p>
+                <p className="text-sm text-gray-600">
+                    Payment Deadline: {new Date(
+                        new Date(earliestYearData.departurePeriod.start).setMonth(
+                            new Date(earliestYearData.departurePeriod.start).getMonth() - 6
+                        )
+                    ).toLocaleDateString()}
+                </p>
+            </>
+        ) : (
+            <p className="text-red-500">No available Hajj slots</p>
+        )}
+    </div>
+
                                 {/* Available Years Section */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -257,7 +495,25 @@ const CreateHajjOffer = () => {
 
                                 {/* Approved Applicants Section */}
                                 <div>
-                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Approved Applicants Without Offers ({pagination.total})</h3>
+                                    {/* Bulk mode toggle */}
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-lg font-medium text-gray-900">
+                                            Approved Applicants Without Offers ({pagination.total})
+                                        </h3>
+                                        <button
+                                            onClick={() => {
+                                                setBulkMode(!bulkMode);
+                                                setSelectedRegistrations([]);
+                                                setBulkResults(null);
+                                            }}
+                                            className={`px-4 py-2 rounded-md ${bulkMode 
+                                                ? 'bg-green-600 text-white' 
+                                                : 'bg-gray-200 text-gray-800'}`}
+                                        >
+                                            {bulkMode ? 'Bulk Mode (ON)' : 'Bulk Mode'}
+                                        </button>
+                                    </div>
+
                                     <input
                                         type="text"
                                         placeholder="Search by name, IC, or TH Account"
@@ -282,18 +538,27 @@ const CreateHajjOffer = () => {
                                                     filteredRegistrations.map((reg) => (
                                                         <tr
                                                             key={reg.registration_id}
-                                                            className={registrationId === reg.registration_id.toString() ? 'bg-blue-50' : ''}
-                                                            onClick={() => handleRegistrationSelect(reg)}
-                                                            style={{ cursor: 'pointer' }}
+                                                            className={`${registrationId === reg.registration_id.toString() ? 'bg-blue-50' : ''} ${reg.mahram_user_id || registrations.find(r => r.mahram_user_id === reg.user_id) ? 'bg-yellow-50' : ''}`}
+                                                            onClick={() => !bulkMode && handleRegistrationSelect(reg)}
+                                                            style={{ cursor: bulkMode ? 'default' : 'pointer' }}
                                                         >
                                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                                <input
-                                                                    type="radio"
-                                                                    name="selectedApplicant"
-                                                                    checked={registrationId === reg.registration_id.toString()}
-                                                                    onChange={() => handleRegistrationSelect(reg)}
-                                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                                />
+                                                                {bulkMode ? (
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={selectedRegistrations.includes(reg.registration_id)}
+                                                                        onChange={(e) => handleBulkSelect(reg, e.target.checked)}
+                                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                                    />
+                                                                ) : (
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="selectedApplicant"
+                                                                        checked={registrationId === reg.registration_id.toString()}
+                                                                        onChange={() => handleRegistrationSelect(reg)}
+                                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                                    />
+                                                                )}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <div className="flex items-center">
@@ -335,6 +600,21 @@ const CreateHajjOffer = () => {
                                         </table>
                                     </div>
 
+                                    {/* Bulk action buttons */}
+                                    {bulkMode && (
+                                        <div className="mb-4 p-3 bg-blue-50 rounded-md">
+                                            <p className="font-medium">
+                                                Bulk Mode: {selectedRegistrations.length} selected | 
+                                                Available Slots: {earliestYearData?.availableSlots || 0}
+                                            </p>
+                                            {earliestYearData && (
+                                                <p className="text-sm">
+                                                    Hajj {earliestYearData.year} - {earliestYearData.availableSlots} slots remaining
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Pagination */}
                                     <div className="flex items-center justify-between mt-4">
                                         <div>
@@ -364,7 +644,7 @@ const CreateHajjOffer = () => {
                                 </div>
 
                                 {/* Offer Preview */}
-                                {previewData && (
+                                {previewData && !bulkMode && (
                                     <div className="border p-4 rounded-md shadow-sm">
                                         <h3 className="text-lg font-medium text-gray-900 mb-2">Offer Preview</h3>
                                         <p>Applicant Name: {previewData.name}</p>
@@ -383,18 +663,34 @@ const CreateHajjOffer = () => {
                                     >
                                         Cancel
                                     </button>
-                                    <button
-                                        type="submit"
-                                        onClick={handleSubmit}
-                                        disabled={!registrationId || !selectedYear || isSubmitting}
-                                        className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                                            !registrationId || !selectedYear || isSubmitting
-                                                ? 'bg-blue-300 cursor-not-allowed'
-                                                : 'bg-blue-600 hover:bg-blue-700'
-                                        } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-                                    >
-                                        {isSubmitting ? 'Creating...' : 'Create Offer'}
-                                    </button>
+
+                                    {!bulkMode && (
+                                        <button
+                                            onClick={handleSubmit}
+                                            disabled={!registrationId || isSubmitting}
+                                            className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                                                !registrationId || isSubmitting
+                                                    ? 'bg-blue-300 cursor-not-allowed'
+                                                    : 'bg-blue-600 hover:bg-blue-700'
+                                            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                                        >
+                                            {isSubmitting ? 'Creating Offer...' : 'Create Offer'}
+                                        </button>
+                                    )}
+
+                                    {bulkMode && (
+                                        <button
+                                            onClick={handleBulkSubmit}
+                                            disabled={selectedRegistrations.length === 0 || isSubmitting}
+                                            className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                                                selectedRegistrations.length === 0 || isSubmitting
+                                                    ? 'bg-blue-300 cursor-not-allowed'
+                                                    : 'bg-blue-600 hover:bg-blue-700'
+                                            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                                        >
+                                            {isSubmitting ? 'Creating Offers...' : 'Create Offers'}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}

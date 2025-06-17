@@ -13,6 +13,8 @@ import AdminLogin from "./Admin/AdminLogin"; // Add this import
 import AdminDashboard from "./Admin/AdminDashboard"; // You'll need to create this
 import HajjApplications from './Admin/HajjApplications';
 import CreateHajjOffer from "./Admin/CreateHajjOffer";
+import HajjAppeal from "./hajjappeal";
+import AdminViewAppeals from "./Admin/AdminAppeal";
 
 
 function App() {
@@ -31,6 +33,8 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/hajj-applications" element={<HajjApplications />} />
         <Route path="/admin/hajj-offers" element={<CreateHajjOffer />} />
+        <Route path="/appeal" element={<HajjAppeal />} />
+        <Route path="/admin/hajj-appeals" element={<AdminViewAppeals />} />
       </Routes>
     </Router>
   );

@@ -30,6 +30,8 @@ export default function Login() {
         // Store the userId and th_acc_no in local storage
         localStorage.setItem('userId', data.user.user_id);   // Store the user ID
         localStorage.setItem('th_acc_no', data.user.th_acc_no); // Store the TH account number
+        localStorage.setItem('fullName', data.user.full_name); // Store full name
+        localStorage.setItem('icNo', data.user.ic_no); // Store IC number
 
         navigate("/dashboard");  // Redirect to dashboard
       } else {
