@@ -27,6 +27,9 @@ const AdminViewAppeals = () => {
     const [user_id, setUserID] = useState('')
     const [openEditYearModel, setopenEditYearModel] = useState(false)
     const [offer_id, setoffer_id] = useState('')
+    const [reuploadAppealLetter, setReuploadAppealLetter] = useState(false);
+    const [reuploadConsentLetter, setReuploadConsentLetter] = useState(false);
+    const [reuploadMedicalCertificate, setReuploadMedicalCertificate] = useState(false);
 
     // Moved fetchAppeals outside useEffect to make it accessible in other functions
     const fetchAppeals = async () => {
@@ -99,41 +102,46 @@ const AdminViewAppeals = () => {
         setSortConfig({ key, direction });
     };
 
-    const handleDecisionSubmit = async () => {
-        if (!selectedAppeal || !decision) return;
+    // AdminAppeal.js
 
-        try {
-            const response = await fetch(
-                `http://localhost:5000/api/admin/hajj-appeals/${selectedAppeal.appeal_id}/decision`,
-                {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        decision,
-                        justification: justification || null,
-                        related_user_id: selectedAppeal.related_user_id,
-                        user_id:selectedAppeal.user_id,
-                    }),
-                }
-            );
+const handleDecisionSubmit = async () => {
+    if (!selectedAppeal || !decision) return;
 
-            const data = await response.json();
-            if (data.success) {
-                setAppeals(appeals.map(appeal =>
-                    appeal.appeal_id === selectedAppeal.appeal_id ? { ...appeal, status: decision } : appeal
-                ));
-                setSelectedAppeal(null);
-                setDecision('');
-                setJustification('');
-            } else {
-                alert(data.message || 'Failed to update appeal status');
+    try {
+        const response = await fetch(
+            `http://localhost:5000/api/admin/hajj-appeals/${selectedAppeal.appeal_id}/decision`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    decision,
+                    justification: justification || null,
+                    reuploadAppealLetter: reuploadAppealLetter,
+                    reuploadConsentLetter: reuploadConsentLetter,
+                    reuploadMedicalCertificate: reuploadMedicalCertificate,
+                }),
             }
-        } catch (err) {
-            alert('Server error. Please try again later.');
+        );
+
+        const data = await response.json();
+        if (data.success) {
+            // Refresh the appeals list
+            fetchAppeals();
+            setSelectedAppeal(null);
+            setDecision('');
+            setJustification('');
+            setReuploadAppealLetter(false);
+            setReuploadConsentLetter(false);
+            setReuploadMedicalCertificate(false);
+        } else {
+            alert(data.message || 'Failed to update appeal status');
         }
-    };
+    } catch (err) {
+        alert('Server error. Please try again later.');
+    }
+};
 
     // Corrected handlehajjYearChangeSubmit function
     const handlehajjYearChangeSubmit = async () => {
@@ -358,6 +366,8 @@ const AdminViewAppeals = () => {
                                 <option value="Pending">Pending</option>
                                 <option value="Approved">Approved</option>
                                 <option value="Rejected">Rejected</option>
+                                <option value="Reupload">Reupload</option>
+                                <option value="Awaiting Review">Awaiting Review</option>
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                 <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -550,7 +560,7 @@ const AdminViewAppeals = () => {
             </div>
 
             {/* Decision Modal */}
-            {selectedAppeal && !openEditYearModel && (
+ {selectedAppeal && !openEditYearModel && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
                         <h2 className="text-xl font-bold mb-4">Manage Appeal</h2>
@@ -565,8 +575,41 @@ const AdminViewAppeals = () => {
                                 <option value="">Select decision</option>
                                 <option value="Approved">Approve</option>
                                 <option value="Rejected">Reject</option>
+                                <option value="Reupload">Reupload</option>
+                                
                             </select>
                         </div>
+
+                                                 {decision === 'Reupload' && (
+                            <>
+                                <div className="mb-4">
+                                    <label className="block text-gray-700 text-sm font-bold mb-2">Documents to Reupload</label>
+
+                                    {/* Always show Appeal Letter option */}
+                                    <div className="flex items-center mb-2">
+                                        <input type="checkbox" id="reuploadAppealLetter" className="mr-2" checked={reuploadAppealLetter} onChange={(e) => setReuploadAppealLetter(e.target.checked)} />
+                                        <label htmlFor="reuploadAppealLetter" className="text-gray-700">Appeal Letter</label>
+                                    </div>
+
+                                    {/* Conditionally show Consent Letter option (for Mahram appeals) */}
+                                    {selectedAppeal.appeal_type === 'Mahram' && (
+                                        <div className="flex items-center mb-2">
+                                            <input type="checkbox" id="reuploadConsentLetter" className="mr-2" checked={reuploadConsentLetter} onChange={(e) => setReuploadConsentLetter(e.target.checked)} />
+                                            <label htmlFor="reuploadConsentLetter" className="text-gray-700">Consent Letter</label>
+                                        </div>
+                                    )}
+
+                                    {/* Conditionally show Medical Certificate option (for Sick appeals) */}
+                                    {selectedAppeal.appeal_type === 'Sick' && (
+                                        <div className="flex items-center mb-2">
+                                            <input type="checkbox" id="reuploadMedicalCertificate" className="mr-2" checked={reuploadMedicalCertificate} onChange={(e) => setReuploadMedicalCertificate(e.target.checked)} />
+                                            <label htmlFor="reuploadMedicalCertificate" className="text-gray-700">Medical Certificate</label>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
+
                         <div className="mb-4">
                             <label className="block text-gray-700 text-sm font-bold mb-2">Justification (Reason)</label>
                             <textarea

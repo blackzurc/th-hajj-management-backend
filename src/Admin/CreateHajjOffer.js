@@ -28,8 +28,25 @@ const CreateHajjOffer = () => {
     const [earliestYearData, setEarliestYearData] = useState(null);
     const [bulkMode, setBulkMode] = useState(false);
     const [bulkResults, setBulkResults] = useState(null);
+    const [incomeGroups, setIncomeGroups] = useState({}); // State to store income groups
+    const [adminId] = useState(localStorage.getItem('adminId'));
 
-  const fetchData = useCallback(async () => {
+  const fetchIncomeGroup = useCallback(async (ic_no) => {
+        try {
+            const response = await fetch(`http://20.2.209.23:3000/api/profile/${ic_no}`);
+            if (!response.ok) {
+                console.error(`API call failed for user ${ic_no} with status: ${response.status}`);
+                return null;
+            }
+            const data = await response.json();
+            return data.socialClass || null; // Or whatever the correct field is
+        } catch (error) {
+            console.error("Error fetching income group:", error);
+            return null;
+        }
+    }, []);
+
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             // Fetch available years with slot info
@@ -68,6 +85,21 @@ const CreateHajjOffer = () => {
             setIsLoading(false);
         }
     }, [pagination.currentPage, pagination.limit]);
+
+     useEffect(() => {
+        const getIncomeGroups = async () => {
+            if (registrations.length > 0) {
+                const incomeGroupData = {};
+                for (const reg of registrations) {
+                    const incomeGroup = await fetchIncomeGroup(reg.ic_no);
+                    incomeGroupData[reg.user_id] = incomeGroup;
+                }
+                setIncomeGroups(incomeGroupData);
+            }
+        };
+
+        getIncomeGroups();
+    }, [registrations, fetchIncomeGroup]);
 
     useEffect(() => {
         fetchData();
@@ -150,11 +182,14 @@ const CreateHajjOffer = () => {
             if (result.isConfirmed) {
                 setIsSubmitting(true);
                 try {
-                    const response = await fetch('http://localhost:5000/api/admin/hajj-offers/bulk', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ registration_ids: selectedRegistrations })
-                    });
+                   const response = await fetch('http://localhost:5000/api/admin/hajj-offers/bulk', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    registration_ids: selectedRegistrations,
+    admin_id: adminId  // Add this line
+  }),
+});
 
                     const data = await response.json();
                     
@@ -255,11 +290,14 @@ const handleBulkGenerateLetters = async () => {
 
         // If no Mahram or bulk mode not switched, proceed as before
         setRegistrationId(reg.registration_id.toString());
+        //Get income_group
+        const incomeGroup = await fetchIncomeGroup(reg.ic_no);
+
         setPreviewData({
             name: reg.full_name,
             ic_no: reg.ic_no,
             th_acc_no: reg.th_acc_no,
-            income_group: reg.income_group
+             // set income group with data that fetch from api if it null
         });
     };
 
@@ -297,16 +335,15 @@ const handleBulkGenerateLetters = async () => {
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
-                    const response = await fetch('http://localhost:5000/api/admin/hajj-offers', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            registration_id: parseInt(registrationId),
-                            hajj_year: parseInt(selectedYear)
-                        }),
-                    });
+                 const response = await fetch('http://localhost:5000/api/admin/hajj-offers', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    registration_id: parseInt(registrationId),
+    hajj_year: parseInt(selectedYear),
+    admin_id: adminId  // Add this line
+  }),
+});
 
                     const data = await response.json();
 
@@ -498,7 +535,7 @@ const handleBulkGenerateLetters = async () => {
                                     {/* Bulk mode toggle */}
                                     <div className="flex justify-between items-center mb-4">
                                         <h3 className="text-lg font-medium text-gray-900">
-                                            Approved Applicants Without Offers ({pagination.total})
+                                            Approved Applicants Without Offers 
                                         </h3>
                                         <button
                                             onClick={() => {
@@ -576,12 +613,12 @@ const handleBulkGenerateLetters = async () => {
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                                 <span className={`px-2 py-1 text-xs rounded-full ${
-                                                                    reg.income_group === 'B40' ? 'bg-red-100 text-red-800' :
-                                                                        reg.income_group === 'M40' ? 'bg-yellow-100 text-yellow-800' :
-                                                                        reg.income_group === 'T20' ? 'bg-green-100 text-green-800' :
+                                                                    incomeGroups[reg.user_id] === 'B40' ? 'bg-red-100 text-red-800' :
+                                                                        incomeGroups[reg.user_id] === 'M40' ? 'bg-yellow-100 text-yellow-800' :
+                                                                        incomeGroups[reg.user_id] === 'T20' ? 'bg-green-100 text-green-800' :
                                                                         'bg-gray-100 text-gray-800'
                                                                     }`}>
-                                                                    {reg.income_group || 'N/A'}
+                                                                    {incomeGroups[reg.user_id] || 'N/A'}
                                                                 </span>
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -650,7 +687,7 @@ const handleBulkGenerateLetters = async () => {
                                         <p>Applicant Name: {previewData.name}</p>
                                         <p>IC Number: {previewData.ic_no}</p>
                                         <p>TH Account: {previewData.th_acc_no}</p>
-                                        <p>Income Group: {previewData.income_group}</p>
+                                        
                                         <p>Hajj Year: {selectedYear}</p>
                                     </div>
                                 )}

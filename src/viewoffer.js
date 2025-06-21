@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import Swal from 'sweetalert2';
 
 const ViewOffer = () => {
     const [offerDetails, setOfferDetails] = useState(null);
@@ -8,6 +9,7 @@ const ViewOffer = () => {
     const [error, setError] = useState('');
     const th_acc_no = localStorage.getItem('th_acc_no');
     const [acceptRejectMessage, setAcceptRejectMessage] = useState('');
+    const [applicantNotification, setApplicantNotification] = useState(null);
 
     const fetchOfferDetails = async () => {
         setIsLoading(true);
@@ -43,64 +45,109 @@ const ViewOffer = () => {
         }
     }, [th_acc_no]);
 
-const handleAcceptOffer = async () => {
-    try {
-        const th_acc_no = localStorage.getItem('th_acc_no');
-        const response = await fetch(`http://localhost:5000/api/user/offer/${offerDetails.offer_id}/decision`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                decision: 'Accept',
-                th_acc_no: th_acc_no 
-            }),
-        });
+ const handleAcceptOffer = async () => {
+        Swal.fire({
+            title: 'Confirm Accept Offer?',
+            text: "Are you sure you want to accept this Hajj offer?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, accept!',
+            cancelButtonText: 'Cancel'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    // Existing API call to accept offer...
+                    const th_acc_no = localStorage.getItem('th_acc_no');
+                    const response = await fetch(`http://localhost:5000/api/user/offer/${offerDetails.offer_id}/decision`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            decision: 'Accept',
+                            th_acc_no: th_acc_no
+                        }),
+                    });
 
-            const data = await response.json();
+                    const data = await response.json();
 
-            if (data.success) {
-                setAcceptRejectMessage(data.message);
-                // Refresh offer details after accepting
-                fetchOfferDetails();
-            } else {
-                setError(data.message);
+                    if (data.success) {
+                        setAcceptRejectMessage(data.message);
+                        // Refresh offer details after accepting
+                        fetchOfferDetails();
+                    } else {
+                        setError(data.message);
+                    }
+                } catch (err) {
+                    setError('Failed to connect to server. Please try again later.');
+                    console.error("Error accepting offer:", err);
+                }
             }
-        } catch (err) {
-            setError('Failed to connect to server. Please try again later.');
-            console.error("Error accepting offer:", err);
-        }
+        });
     };
 
-    const handleRejectOffer = async () => {
+const handleRejectOffer = async () => {
     try {
-        const th_acc_no = localStorage.getItem('th_acc_no');
-        const response = await fetch(`http://localhost:5000/api/user/offer/${offerDetails.offer_id}/decision`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                decision: 'Reject',
-                th_acc_no: th_acc_no 
-            }),
-        });
+        // First, check if this user is a Mahram (has applicants linked to them)
+        // Check if the *current* user is a male *dependent* (mahram_user_id != null AND gender = 'Male')
+        const isMahramDependent = offerDetails.mahram_user_id !== null && offerDetails.gender === 'Male';
 
-            const data = await response.json();
+        const confirmationText = isMahramDependent
+            ? "Warning: Rejecting this offer will also reject your applicant's participation in Hajj. Are you sure?"
+            : "Are you sure you want to reject this Hajj offer?";
 
-            if (data.success) {
-                setAcceptRejectMessage(data.message);
-                // Refresh offer details after rejecting
-                fetchOfferDetails();
-            } else {
-                setError(data.message);
+        Swal.fire({
+            title: 'Confirm Reject Offer?',
+            text: confirmationText,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, reject!',
+            cancelButtonText: 'Cancel'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const response = await fetch(`http://localhost:5000/api/user/offer/${offerDetails.offer_id}/decision`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        decision: 'Reject',
+                        th_acc_no: localStorage.getItem('th_acc_no')
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Show appropriate notification
+                    if (data.applicant_affected) {
+                        Swal.fire(
+                            'Both Offers Rejected',
+                            'Your offer and your applicant\'s offer have been rejected. Any payments will be refunded.',
+                            'info'
+                        );
+                    } else {
+                        Swal.fire(
+                            'Offer Rejected',
+                            'Your Hajj offer has been rejected.',
+                            'success'
+                        );
+                    }
+                    fetchOfferDetails(); // Refresh offer details after rejection
+                } else {
+                    setError(data.message);
+                }
             }
-        } catch (err) {
-            setError('Failed to connect to server. Please try again later.');
-            console.error("Error rejecting offer:", err);
-        }
-    };
-
+        });
+    } catch (err) {
+        setError('Failed to check Mahram status. Please try again later.');
+        console.error("Error checking Mahram status:", err);
+    }
+};
     return (
         <div className="min-h-screen bg-gray-100">
             <Sidebar />

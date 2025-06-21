@@ -1,6 +1,6 @@
 // src/Admin/AdminTopbar.js
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const AdminTopbar = () => {
   const navigate = useNavigate();
@@ -15,9 +15,9 @@ const AdminTopbar = () => {
   return (
     <div className="w-[calc(100%-16rem)] h-16 bg-gradient-to-r from-blue-600 to-blue-700 text-white flex items-center justify-between px-6 fixed top-0 left-64 z-30 shadow-md">
       <div className="flex items-center">
-        <span className="text-2xl font-bold">
+        <Link to="/admin/dashboard" className="text-2xl font-bold hover:underline">
           Admin Panel
-        </span>
+        </Link>
       </div>
       <div className="flex items-center gap-4">
         <span className="font-medium">Welcome, {adminName}</span>

@@ -15,6 +15,9 @@ import HajjApplications from './Admin/HajjApplications';
 import CreateHajjOffer from "./Admin/CreateHajjOffer";
 import HajjAppeal from "./hajjappeal";
 import AdminViewAppeals from "./Admin/AdminAppeal";
+import AddMoney from './AddMoney';
+import SVLogin from "./Supervisor/svlogin"; 
+import SVDashboard from "./Supervisor/svdashboard";
 
 
 function App() {
@@ -35,6 +38,9 @@ function App() {
         <Route path="/admin/hajj-offers" element={<CreateHajjOffer />} />
         <Route path="/appeal" element={<HajjAppeal />} />
         <Route path="/admin/hajj-appeals" element={<AdminViewAppeals />} />
+        <Route path="/add-money" element={<AddMoney />} />
+        <Route path="/sv/login" element={<SVLogin />} />
+        <Route path="/sv/dashboard" element={<SVDashboard />} />
       </Routes>
     </Router>
   );

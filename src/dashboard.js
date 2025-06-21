@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   const [userData, setUserData] = useState(null);
+  const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -16,20 +17,20 @@ const Dashboard = () => {
       setError(null);
 
       try {
-        // Change the API call
-        const response = await fetch(
-          `http://localhost:5000/api/hajj/dashboard/${th_acc_no}` // Modified from /api/dashboard to /api/hajj/dashboard
-        );
+        const [dashboardRes, transactionRes] = await Promise.all([
+          fetch(`http://localhost:5000/api/hajj/dashboard/${th_acc_no}`),
+          fetch(`http://localhost:5000/api/hajj/transactions/${th_acc_no}`)
+        ]);
 
-        console.log("API response:", response);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!dashboardRes.ok || !transactionRes.ok) {
+          throw new Error('Failed to fetch one or more dashboard resources.');
         }
 
-        const data = await response.json();
-        setUserData(data);
-        console.log("Dashboard userData:", data); //Inspect `data` which is the value you are getting
+        const dashboardData = await dashboardRes.json();
+        const transactionData = await transactionRes.json();
+
+        setUserData(dashboardData);
+        setTransactions(transactionData.transactions || []);
 
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
@@ -83,13 +84,13 @@ const Dashboard = () => {
       </div>
     );
   }
-  console.log("This code must run");
+
   return (
     <div className="flex">
       <Sidebar />
       <div className="flex-1 ml-64">
         <Topbar />
-        <div className="p-8 bg-gray-100 min-h-screen mt-20"> {/*Increase the margin to pt 20*/}
+        <div className="p-8 bg-gray-100 min-h-screen mt-20">
           <div className="bg-white p-6 rounded shadow-md space-y-4">
             <div>
               <h2 className="text-2xl font-bold text-green-700 mb-6">
@@ -105,7 +106,15 @@ const Dashboard = () => {
 
             <div>
               <h3 className="text-lg font-semibold">TH Account Balance</h3>
-              <p>RM {userData.balance}</p>
+              <div className="flex items-center space-x-4 mt-1">
+                <p className="text-xl">RM {userData.balance}</p>
+                <Link
+                  to="/add-money"
+                  className="bg-green-600 text-white px-4 py-1 rounded-md shadow hover:bg-green-700 transition-colors text-sm"
+                >
+                  Add Funds
+                </Link>
+              </div>
             </div>
 
             {userData.hajj_year ? (
@@ -117,6 +126,30 @@ const Dashboard = () => {
               <div>
                 <h3 className="text-lg font-semibold">Hajj Offer</h3>
                 <p>You currently do not have a Hajj offer.</p>
+              </div>
+            )}
+
+            {transactions.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-2">Transaction History</h3>
+                <table className="w-full border-collapse border border-gray-300 text-sm">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="border p-2">Date</th>
+                      <th className="border p-2">Amount (RM)</th>
+                      <th className="border p-2">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map(tx => (
+                      <tr key={tx.transaction_id}>
+                        <td className="border p-2">{new Date(tx.transaction_date).toLocaleString()}</td>
+                        <td className="border p-2">{parseFloat(tx.amount).toFixed(2)}</td>
+                        <td className="border p-2">{tx.description || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
