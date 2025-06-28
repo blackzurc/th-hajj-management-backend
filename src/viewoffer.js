@@ -25,6 +25,7 @@ const ViewOffer = () => {
 
             if (data.success) {
                 setOfferDetails(data.offer);
+                localStorage.setItem('offerId', String(data.offer.offer_id));
             } else {
                 setError(data.message || 'No offer found for this account.');
             }

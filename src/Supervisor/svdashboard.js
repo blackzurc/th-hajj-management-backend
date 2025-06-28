@@ -114,21 +114,32 @@ const SVDashboard = () => {
             )}
           </div>
 
-          {appealData && (
-            <div className="bg-white p-6 rounded-lg shadow mb-6">
-              <h2 className="text-xl font-semibold mb-4">Appeal Summary</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-blue-50 p-4 rounded">
-                  <h3 className="font-medium text-blue-800">Total Appeals</h3>
-                  <p className="text-2xl font-bold">{appealData.total_appeals}</p>
-                </div>
-                <div className="bg-green-50 p-4 rounded">
-                  <h3 className="font-medium text-green-800">Success Rate</h3>
-                  <p className="text-2xl font-bold">{appealData.success_rate}%</p>
-                </div>
-              </div>
-            </div>
-          )}
+{appealStatsData?.appealApprovalByType?.length > 0 && (
+  <div className="bg-white p-6 rounded-lg shadow mb-6">
+    <h2 className="text-xl font-semibold mb-4">Appeal Summary by Type</h2>
+    <table className="w-full text-left border text-sm">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="border p-2">Appeal Type</th>
+          <th className="border p-2">Total</th>
+          <th className="border p-2">Approved</th>
+          <th className="border p-2">Approval Rate (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {appealStatsData.appealApprovalByType.map((row, idx) => (
+          <tr key={idx} className="border-t">
+            <td className="p-2 border">{row.appeal_type}</td>
+            <td className="p-2 border">{row.total}</td>
+            <td className="p-2 border">{row.approved}</td>
+            <td className="p-2 border">{parseFloat(row.approval_rate).toFixed(2)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+
 
           {offerStatsData && (
             <div className="bg-white p-6 rounded-lg shadow mb-6">

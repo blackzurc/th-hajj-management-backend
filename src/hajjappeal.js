@@ -48,6 +48,7 @@ const HajjAppeal = () => {
     const fullName = localStorage.getItem("fullName");
     const icNo = localStorage.getItem("icNo");
     const thAccNo = localStorage.getItem("thAccNo");
+    const offerId        = localStorage.getItem("offerId"); 
     //const gender = localStorage.getItem("gender"); NO LONGER NEEDED
     //const birthDate = localStorage.getItem("birthDate"); NO LONGER NEEDED
 
@@ -60,10 +61,16 @@ const HajjAppeal = () => {
     };
 
     const getBirthDateFromIC = (icNo) => {
-        const year = "20"+icNo.slice(0, 2);
-        const month = icNo.slice(2, 4);
-        const day = icNo.slice(4, 6);
-        return `${year}-${month}-${day}`;
+  const yy = parseInt(icNo.slice(0, 2), 10);   // 00-99
+  const mm = icNo.slice(2, 4);
+  const dd = icNo.slice(4, 6);
+
+  // Decide the century: if YY is greater than the current two-digit year,
+  // it must be 1900-99, otherwise 2000-99.
+  const currentYY = new Date().getFullYear() % 100;
+  const yyyy = yy > currentYY ? 1900 + yy : 2000 + yy;
+
+  return `${yyyy}-${mm}-${dd}`;  
     };
 
     const calculateAge = (birthDate) => {
@@ -84,7 +91,7 @@ const HajjAppeal = () => {
     const handleMahramCheck = async () => {
         try {
             setLoading(true);
-            const mahramCheckResponse = await fetch('http://20.198.176.110:5000/thApi/checkMahram', {
+            const mahramCheckResponse = await fetch('https://myjpn.ddns.net:5443/thApi/checkMahram', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -99,7 +106,10 @@ const HajjAppeal = () => {
 
             const mahramCheckResult = await mahramCheckResponse.json();
 
-            if (mahramCheckResult.success) {
+            if (
+  mahramCheckResult.success &&
+  mahramCheckResult.application?.mahram === 'MAHRAM'   // <-- only treat true mahram as verified
+){
                 Swal.fire(
                     'Mahram Verified!',
                     mahramCheckResult.message + '. Relationship: ' + mahramCheckResult.application.hubungan,
@@ -123,11 +133,16 @@ const HajjAppeal = () => {
                     setRelatedUserId(null);
                 }
             } else {
-                Swal.fire('Error', mahramCheckResult.message || 'Mahram verification failed', 'error');
-                setRelationshipType('');
-                setIsMahramVerified(false);
-                isMahramVerifiedRef.current = false;
-                setRelatedUserId(null);
+                const warning =
+    mahramCheckResult.application?.mahram === 'BUKAN MAHRAM'
+      ? 'The selected person is **not** a valid mahram.'
+      : mahramCheckResult.message || 'Mahram verification failed.';
+
+  Swal.fire('Error', warning, 'error');
+  setRelationshipType('');
+  setIsMahramVerified(false);
+  isMahramVerifiedRef.current = false;
+  setRelatedUserId(null);
             }
         } catch (error) {
             console.error('Mahram check error:', error);
@@ -156,10 +171,21 @@ const HajjAppeal = () => {
         setError(null);
         setSuccessMessage(null);
 
+        if (!offerId) {
+     Swal.fire( 
+       'Warning', 
+      'You must have an active Hajj Offer before submitting an appeal.', 
+       'warning' 
+      ); 
+     setLoading(false); 
+      return;                    // stop the handler here 
+  }
+
         const formData = new FormData();
         formData.append('user_id', userId);
         formData.append('registration_id', registrationId);
         formData.append('appeal_type', appealType);
+         formData.append('offer_id', offerId);
 
         if (appealLetter) {
             formData.append('appealLetter', appealLetter);
@@ -504,9 +530,10 @@ const HajjAppeal = () => {
                                     onChange={handleAppealTypeChange}
                                 >
                                     <option value="">Select Appeal Type</option>
-                                    <option value="Mahram" disabled={getGenderFromIC(icNo) !== 'Female'}>
-                                        Mahram {getGenderFromIC(icNo) !== 'Female' ? '(Only for Females)' : ''}
-                                    </option>
+                                    <option value="Mahram">
+  Mahram
+</option>
+
                                     <option value="Sick">Sick</option>
                                     <option value="Old" disabled={calculateAge(getBirthDateFromIC(icNo)) < 60}>
                                         Old {calculateAge(getBirthDateFromIC(icNo)) < 60 ? '(Only for 60+)' : ''}
