@@ -3,7 +3,7 @@ import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 
 const AddApplicant = () => {
     const [userData, setUserData] = useState(null);
@@ -12,8 +12,6 @@ const AddApplicant = () => {
     const [isRegistered, setIsRegistered] = useState(false);
     const [registrationId, setRegistrationId] = useState(null);
 
-    const [nationalIdFile, setNationalIdFile] = useState(null);
-    const [birthCertificateFile, setBirthCertificateFile] = useState(null);
     const [uploading, setUploading] = useState(false);
 
     // Mahram Registration States
@@ -22,13 +20,11 @@ const AddApplicant = () => {
     const [mahramIcNo, setMahramIcNo] = useState("");
     const [mahramThAccNo, setMahramThAccNo] = useState("");
     const [relationshipType, setRelationshipType] = useState("");
-    const [mahramNationalIdFile, setMahramNationalIdFile] = useState(null);
-    const [mahramBirthCertificateFile, setMahramBirthCertificateFile] = useState(null);
     const [isMahramVerified, setIsMahramVerified] = useState(false);
 
     const th_acc_no = localStorage.getItem("th_acc_no");
     const userId = localStorage.getItem("userId");
-    const navigate = useNavigate(); // Initialize useNavigate
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -65,16 +61,13 @@ const AddApplicant = () => {
 
     const isFemaleBelow45 = () => {
         if (userData && userData.ic_no) {
-            // Get the last digit of the IC number
             const lastDigit = parseInt(userData.ic_no.slice(-1));
-
-            // Check if the last digit is an even number
-            const gender = lastDigit % 2 === 0 ? 'Female' : 'Male'; // Even number indicates female
+            const gender = lastDigit % 2 === 0 ? 'Female' : 'Male';
 
             const birthDate = getBirthDateFromIC(userData.ic_no)
             const age = calculateAge(birthDate)
 
-            return (gender === 'Female' && age < 45); // Check is female && Below 45
+            return (gender === 'Female' && age < 45);
         }
         return false;
     };
@@ -97,44 +90,38 @@ const AddApplicant = () => {
             const mahramCheckResult = await mahramCheckResponse.json();
 
             if (
-  mahramCheckResult.success &&
-  mahramCheckResult.application?.mahram === 'MAHRAM'
-)   {
-  Swal.fire(
-    'Mahram Verified!',
-    `${mahramCheckResult.message}. Relationship: ${mahramCheckResult.application.hubungan}`,
-    'success'
-  );
-  setRelationshipType(mahramCheckResult.application.hubungan);
-  setIsMahramVerified(true);
-  setIsApplyingWithMahram(true);
-} else {
-  const reason =
-    mahramCheckResult.application?.mahram === 'BUKAN MAHRAM'
-      ? 'The selected person is **not** a valid mahram.'
-      : mahramCheckResult.message || 'Mahram verification failed.';
+                mahramCheckResult.success &&
+                mahramCheckResult.application?.mahram === 'MAHRAM'
+            ) {
+                Swal.fire(
+                    'Mahram Verified!',
+                    `${mahramCheckResult.message}. Relationship: ${mahramCheckResult.application.hubungan}`,
+                    'success'
+                );
+                setRelationshipType(mahramCheckResult.application.hubungan);
+                setIsMahramVerified(true);
+                setIsApplyingWithMahram(true);
+            } else {
+                const reason =
+                    mahramCheckResult.application?.mahram === 'BUKAN MAHRAM'
+                        ? 'The selected person is **not** a valid mahram.'
+                        : mahramCheckResult.message || 'Mahram verification failed.';
 
-  Swal.fire('Error', reason, 'error');
-  setRelationshipType('');
-  setIsMahramVerified(false);
-}
+                Swal.fire('Error', reason, 'error');
+                setRelationshipType('');
+                setIsMahramVerified(false);
+            }
         } catch (error) {
             console.error('Mahram check error:', error);
             Swal.fire('Error', 'Failed to verify Mahram. Please try again later.', 'error');
             setRelationshipType('');
-            setIsMahramVerified(false); // Ensure it's false on error too
+            setIsMahramVerified(false);
         }
     };
 
     const handleAddApplicant = async () => {
-        if (!nationalIdFile || !birthCertificateFile) {
-            Swal.fire('Warning', "Please upload both National ID and Birth Certificate files.", 'warning');
-            return;
-        }
-
         if (isFemaleBelow45() && !isApplyingWithMahram) {
             Swal.fire('Warning', "Unaccompanied females below 45 may face difficulties during the Hajj process.  It is strongly recommended to register with a Mahram.", 'warning');
-            // DO NOT RETURN - Allow the submission to continue
         }
 
         if (isApplyingWithMahram && !isMahramVerified) {
@@ -144,7 +131,6 @@ const AddApplicant = () => {
 
         const registrationCost = isApplyingWithMahram ? 2600 : 1300;
 
-        // Check balance first before any uploads
         if (userData.balance < registrationCost) {
             Swal.fire('Warning', `You need a minimum balance of RM ${registrationCost} to register.`, 'warning');
             return;
@@ -154,82 +140,40 @@ const AddApplicant = () => {
         setError(null);
 
         try {
-            // First check balance via API before proceeding
-            const balanceCheckResponse = await fetch("http://localhost:5000/api/hajj/hajj-registration", {
+            const registrationData = {
+                user_id: userId,
+                mahram_full_name: mahramFullName,
+                mahram_ic_no: mahramIcNo,
+                mahram_th_acc_no: mahramThAccNo,
+                relationship_type: relationshipType,
+                is_applying_with_mahram: isApplyingWithMahram,
+                registrationCost: registrationCost
+            };
+
+            const registrationResponse = await fetch("http://localhost:5000/api/hajj/hajj-registration", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    user_id: userId,
-                    mahram_full_name: mahramFullName,
-                    mahram_ic_no: mahramIcNo,
-                    mahram_th_acc_no: mahramThAccNo,
-                    relationship_type: relationshipType,
-                    is_applying_with_mahram: isApplyingWithMahram,
-                    registrationCost: registrationCost
-                }),
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(registrationData)
             });
 
-            const balanceCheckData = await balanceCheckResponse.json();
-
-            if (!balanceCheckResponse.ok || !balanceCheckData.success) {
-                throw new Error(balanceCheckData.message || "Balance check failed");
+            if (!registrationResponse.ok) {
+                const errorData = await registrationResponse.json();
+                const errorMessage = errorData.message || "Registration failed.";
+                throw new Error(errorMessage);
             }
 
-            // Only proceed with document upload if balance check passed
-            const formData = new FormData();
-            formData.append("national_id", nationalIdFile);
-            formData.append("birth_certificate", birthCertificateFile);
-            formData.append("user_id", userId);
+            const responseData = await registrationResponse.json();
 
-            if (isApplyingWithMahram) {
-                if (!mahramFullName || !mahramIcNo || !mahramThAccNo || !relationshipType) {
-                    Swal.fire('Warning', "Please provide all Mahram details.", 'warning');
-                    return;
-                }
-
-                if (!mahramNationalIdFile || !mahramBirthCertificateFile) {
-                    Swal.fire('Warning', "Please upload Mahram's National ID and Birth Certificate files.", 'warning');
-                    return;
-                }
-
-                formData.append("mahram_full_name", mahramFullName);
-                formData.append("mahram_ic_no", mahramIcNo);
-                formData.append("mahram_th_acc_no", mahramThAccNo);
-                formData.append("relationship_type", relationshipType);
-                formData.append("is_applying_with_mahram", isApplyingWithMahram);
-                formData.append("mahram_national_id", mahramNationalIdFile);
-                formData.append("mahram_birth_certificate", mahramBirthCertificateFile);
-            }
-
-            const uploadResponse = await fetch("http://localhost:5000/api/hajj/upload-documents", {
-                method: "POST",
-                body: formData,
-            });
-
-            const uploadData = await uploadResponse.json();
-
-            if (!uploadResponse.ok) {
-                if (uploadData.message === 'document_failed') {
-                    Swal.fire('Warning', "Please upload both National ID and Birth Certificate files.", 'warning');
-                }
-                if (uploadData.message === 'mahram_invalid') {
-                    Swal.fire('Warning', "Please enter a valid th account mahram.", 'warning');
-                }
-                if (uploadData.message === 'mahram_document_failed') {
-                    Swal.fire('Warning', "Please enter a valid Mahram document", 'warning');
-                }
-                throw new Error("Document upload failed.");
-            }
-
-            // If everything succeeded
             Swal.fire(
                 'Success',
-                "Applicant added and documents uploaded successfully.",
+                "Applicant added successfully!",
                 'success'
             );
 
-            localStorage.setItem('registrationId', balanceCheckData.applicant_registration_id);
-            console.log("Registration ID set in localStorage:", balanceCheckData.applicant_registration_id);
+            localStorage.setItem('registrationId', responseData.applicant_registration_id);
+            console.log("Registration ID set in localStorage:", responseData.applicant_registration_id);
             navigate('/dashboard');
 
         } catch (error) {
@@ -239,6 +183,7 @@ const AddApplicant = () => {
             setUploading(false);
         }
     };
+
     const getBirthDateFromIC = (icNo) => {
         const year = "20" + icNo.slice(0, 2);
         const month = icNo.slice(2, 4);
@@ -288,13 +233,14 @@ const AddApplicant = () => {
             </div>
         );
     }
+
     if (isRegistered) {
         return (
             <div className="flex">
                 <Sidebar />
                 <div className="flex-1 ml-64">
                     <Topbar />
-                    <div className="p-8 bg-gray-100 min-h-screen pt-20"> {/* Added pt-20 */}
+                    <div className="p-8 bg-gray-100 min-h-screen pt-20">
                         <div className="bg-white p-6 rounded shadow-md">
                             <p className="text-green-600 font-bold">
                                 You are already registered for Hajj.
@@ -308,7 +254,6 @@ const AddApplicant = () => {
             </div>
         );
     }
-
 
     return (
         <div className="flex">
@@ -332,14 +277,7 @@ const AddApplicant = () => {
                             <input type="text" className="w-full border p-2 rounded" value={userData?.ic_no || ""} readOnly />
                         </div>
 
-                        <div>
-                            <label className="block text-gray-700">National ID Photo (Front and Back) *</label>
-                            <input type="file" accept="image/*,application/pdf" onChange={(e) => setNationalIdFile(e.target.files[0])} required />
-                        </div>
-                        <div>
-                            <label className="block text-gray-700">Birth Certificate Scan *</label>
-                            <input type="file" accept="image/*,application/pdf" onChange={(e) => setBirthCertificateFile(e.target.files[0])} required />
-                        </div>
+
                         {isFemaleBelow45() && (
                             <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4" role="alert">
                                 <p><strong>Warning:</strong> Unaccompanied females below 45 may face difficulties during the Hajj process.  It is strongly recommended to register with a Mahram.</p>
@@ -409,14 +347,7 @@ const AddApplicant = () => {
                                         readOnly
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-gray-700">Mahram National ID Photo (Front and Back) *</label>
-                                    <input type="file" accept="image/*,application/pdf" onChange={(e) => setMahramNationalIdFile(e.target.files[0])} required />
-                                </div>
-                                <div>
-                                    <label className="block text-gray-700">Mahram Birth Certificate Scan *</label>
-                                    <input type="file" accept="image/*,application/pdf" onChange={(e) => setMahramBirthCertificateFile(e.target.files[0])} required />
-                                </div>
+
                             </div>
                         )}
 

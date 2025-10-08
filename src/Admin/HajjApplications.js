@@ -11,8 +11,7 @@ const HajjApplications = () => {
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [decision, setDecision] = useState("");
   const [reason, setReason] = useState("");
-  const [documents, setDocuments] = useState([]);
-  const [showDocumentsModal, setShowDocumentsModal] = useState(false);
+
   const [selectedRegistrations, setSelectedRegistrations] = useState([]);
   const [earliestYearData, setEarliestYearData] = useState(null);
   const [bulkMode, setBulkMode] = useState(false);
@@ -107,7 +106,8 @@ const HajjApplications = () => {
     setSortConfig({ key, direction });
   };
 
-  const fetchUserDocuments = async (userId) => {
+  // REMOVE THIS FUNCTION
+  /*const fetchUserDocuments = async (userId) => {
     try {
       const response = await fetch(`http://localhost:5000/api/admin/user-documents/${userId}`);
       const data = await response.json();
@@ -121,7 +121,7 @@ const HajjApplications = () => {
       alert("Server error. Please try again later.");
     }
   };
-
+*/
   const handleDecision = async () => {
     if (!selectedApplication || !decision) return;
 
@@ -160,15 +160,16 @@ const HajjApplications = () => {
       alert("Server error. Please try again later.");
     }
   };
-
-  const openDocumentsModal = (userId) => {
+  // REMOVE THIS FUNCTION
+ /* const openDocumentsModal = (userId) => {
     fetchUserDocuments(userId);
-  };
+  };*/
 
-  const closeDocumentsModal = () => {
+  // REMOVE THIS FUNCTION
+ /* const closeDocumentsModal = () => {
     setShowDocumentsModal(false);
     setDocuments([]);
-  };
+  };*/
 
     // New function to handle setting selected application and initializing the reupload states
     const handleManageApplication = (application) => {
@@ -309,12 +310,13 @@ const HajjApplications = () => {
                                             >
                                                 Manage
                                             </button>
-                                            <button
+                                            {/* REMOVE THIS BUTTON */}
+                                           {/* <button
                                                 onClick={() => openDocumentsModal(application.user_id)}
                                                 className="text-gray-600 hover:text-gray-900"
                                             >
                                                 View Docs
-                                            </button>
+                                            </button>*/}
                                         </td>
                                     </tr>
                                 ))
@@ -474,8 +476,8 @@ const HajjApplications = () => {
                 </div>
             )}
 
-            {/* Documents Modal */}
-            {showDocumentsModal && (
+            {/* REMOVE THIS ENTIRE SECTION (Documents Modal) */}
+           {/* {showDocumentsModal && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <h2 className="text-xl font-bold mb-4">User Documents</h2>
@@ -543,7 +545,7 @@ const HajjApplications = () => {
                         </div>
                     </div>
                 </div>
-                )}
+                )}*/}
         </div >
     );
 };
