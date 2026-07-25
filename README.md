@@ -1,70 +1,260 @@
-# Getting Started with Create React App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## BACKEND README.md
 
-## Available Scripts
+```markdown
+# API-Driven Tabung Haji Hajj Management System (Backend)
 
-In the project directory, you can run:
+This repository contains the backend API of my Final Year Project, an API-driven Tabung Haji Hajj Management System developed using Node.js, Express.js, and PostgreSQL.
 
-### `npm start`
+The backend provides RESTful API services for authentication, Hajj registration, deposit management, offer processing, appeal workflows, document management, and administrative reporting.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Project Overview
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+The backend serves as the core application layer responsible for handling business logic, database operations, and communication between the frontend application and PostgreSQL database.
 
-### `npm test`
+The system manages:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- User authentication
+- Hajj registration workflows
+- Deposit and transaction handling
+- Hajj offer management
+- Appeal processing
+- Document management
+- Administrative monitoring
+- Supervisor analytics
 
-### `npm run build`
+This project demonstrates practical backend development experience in designing REST APIs, integrating databases, and implementing server-side application workflows.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## My Contribution
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+I was responsible for:
 
-### `npm run eject`
+- Developing RESTful APIs using Node.js and Express.js
+- Designing API routes and backend logic
+- Integrating PostgreSQL database operations
+- Implementing authentication workflows
+- Developing Hajj registration and appeal processes
+- Handling document uploads
+- Generating PDF offer letters
+- Developing dashboard APIs for reporting and analytics
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Backend Responsibilities
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+The backend handles:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- User registration and authentication
+- Hajj registration processing
+- Deposit and transaction management
+- Hajj offer creation and decision handling
+- Appeal submission and review workflows
+- Document upload management
+- Admin dashboard services
+- Hajj quota management
+- Supervisor analytics endpoints
 
-## Learn More
+---
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Technologies Used
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Backend
+- Node.js
+- Express.js
+- JavaScript
+- PostgreSQL
 
-### Code Splitting
+### Libraries
+- pg (PostgreSQL client)
+- bcrypt (Password hashing)
+- Multer (File upload handling)
+- pdfmake (PDF generation)
+- cors
+- node-fetch
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### Tools
+- Postman
+- Visual Studio Code
+- Git
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## API Architecture
 
-### Making a Progressive Web App
+The backend follows a modular Express.js architecture.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
 
-### Advanced Configuration
+Backend API
+│
+├── index.js
+│ Server entry point
+│
+├── connection.js
+│ PostgreSQL database connection
+│
+└── routes/
+├── auth.js
+├── user.js
+├── hajj.js
+├── admin.js
+└── supervisor-dashboard.js
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
 
-### Deployment
+API route groups:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
 
-### `npm run build` fails to minify
+/api/auth
+/api/user
+/api/hajj
+/api/admin
+/api/supervisor
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+---
+
+## Database Design
+
+The application uses PostgreSQL as the primary database.
+
+Main database entities include:
+
+- User
+- Hajj_Registration
+- Hajj_Offer
+- Hajj_Quota
+- Hajj_Season
+- Transaction
+- Hajj_Appeal
+- User_Documents
+- Hajj_Appeal_Documents
+
+The system also uses SQL views for dashboard statistics and reporting.
+
+---
+
+## API Features
+
+### Authentication
+
+- User registration
+- User login
+- Admin authentication
+- Supervisor authentication
+
+### Hajj Management
+
+- Hajj registration processing
+- Registration status tracking
+- Deposit handling
+- Transaction history retrieval
+- Appeal submission and tracking
+
+### Administration
+
+- Application review
+- Hajj quota management
+- Offer management
+- Appeal decision processing
+- Dashboard statistics
+
+### Supervisor Analytics
+
+- Applicant demographic statistics
+- Hajj offer statistics
+- Appeal statistics
+
+---
+
+## Installation
+
+### Prerequisites
+
+Required:
+
+- Node.js
+- npm
+- PostgreSQL
+
+### Setup
+
+Clone repository:
+
+```bash
+git clone <repository-url>
+
+Navigate to project:
+
+cd th-hajj-management-backend
+
+Install dependencies:
+
+npm install
+
+Start server:
+
+node index.js
+
+API will run at:
+
+http://localhost:5050
+Database Setup
+
+To run the backend:
+
+Install PostgreSQL
+Create a project database
+Configure database connection
+Import required tables and views
+
+Required database entities:
+
+User
+Hajj_Registration
+Hajj_Offer
+Hajj_Quota
+Hajj_Season
+Transaction
+Hajj_Appeal
+User_Documents
+Hajj_Appeal_Documents
+API Testing
+
+The API can be tested using:
+
+Postman
+Insomnia
+curl
+
+Testing includes:
+
+Authentication requests
+Database operations
+File upload workflows
+Dashboard API responses
+Business workflow validation
+Security Implementation
+
+The backend implements:
+
+Password hashing using bcrypt
+File upload validation
+File size restrictions
+CORS configuration
+Data validation during workflows
+Future Improvements
+
+Possible improvements:
+
+Implement JWT authentication middleware
+Add environment variable configuration
+Add Swagger/OpenAPI API documentation
+Expand automated API testing
+Improve API validation
+Refactor database operations into service layers
+Summary
+
+This backend project demonstrates practical backend development experience using Node.js, Express.js, and PostgreSQL.
+
+It showcases skills in REST API development, database integration, authentication workflows, file handling, and server-side application design for a complete full-stack system.
